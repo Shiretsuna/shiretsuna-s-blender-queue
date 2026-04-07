@@ -20,21 +20,18 @@ jobs:
         include:
           - os: windows-latest
             build_args: --win nsis portable zip
-            # Picks up setup installer, portable exe, and zip — excludes elevate.exe and blockmaps
-            artifact_pattern: |
-              release/Fox Blender Queue-*-windows-setup.exe
-              release/Fox Blender Queue-*-win-x64.exe
-              release/Fox Blender Queue-*-win-x64.zip
+            # "Fox Blender Queue*" naturally excludes elevate.exe and blockmap files
+            artifact_pattern: release/Fox Blender Queue*.exe
+            artifact_pattern2: release/Fox Blender Queue*.zip
           - os: macos-latest
             build_args: --mac dmg zip
-            artifact_pattern: |
-              release/Fox Blender Queue-*-mac-*.dmg
-              release/Fox Blender Queue-*-mac-*.zip
+            # Only Mac files are in release/ on a Mac runner — safe to use *.dmg / *.zip
+            artifact_pattern: release/*.dmg
+            artifact_pattern2: release/*.zip
           - os: ubuntu-latest
             build_args: --linux AppImage deb
-            artifact_pattern: |
-              release/Fox Blender Queue-*-linux-*.AppImage
-              release/fox-blender-queue_*_amd64.deb
+            artifact_pattern: release/*.AppImage
+            artifact_pattern2: release/*.deb
 
     runs-on: ${{ matrix.os }}
 
@@ -64,6 +61,8 @@ jobs:
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ matrix.artifact_pattern }}
+          files: |
+            ${{ matrix.artifact_pattern }}
+            ${{ matrix.artifact_pattern2 }}
           draft: false
           prerelease: false
