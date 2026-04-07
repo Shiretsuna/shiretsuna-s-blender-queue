@@ -63,12 +63,14 @@ function buildArgs(job: RenderJob): string[] {
   const args: string[] = [
     '-b', job.blendFile,
     '--engine', job.engine,
-    '-o', job.outputPath,
     '-s', String(job.frameStart),
     '-e', String(job.frameEnd),
     '-j', String(job.frameStep),
     '-t', String(job.threads)
   ]
+
+  if (job.outputPath)
+    args.push('-o', job.outputPath)
 
   if (job.resolutionX != null)
     args.push('--python-expr', `import bpy; bpy.context.scene.render.resolution_x = ${job.resolutionX}`)

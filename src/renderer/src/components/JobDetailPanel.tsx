@@ -195,9 +195,13 @@ function JobDetail({ job, onClose }: { job: RenderJob; onClose: () => void }): J
         <div className={styles.sectionLabel}>Paths</div>
         <div className={styles.params}>
           <Param label="File" value={job.blendFile} mono truncate />
-          <Param label="Output" value={job.outputPath} mono truncate />
+          {job.outputPath && <Param label="Output" value={job.outputPath} mono truncate />}
         </div>
-        <button className={styles.openFolderBtn} onClick={() => window.api.openPath(job.outputPath)}>
+        <button className={styles.openFolderBtn} onClick={() => {
+          const parentDir = (p: string) => p.replace(/\\/g, '/').replace(/\/[^/]+$/, '')
+          const target = job.lastFramePath ? parentDir(job.lastFramePath) : parentDir(job.blendFile)
+          window.api.openPath(target)
+        }}>
           Open Output Folder ↗
         </button>
 

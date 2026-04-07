@@ -142,10 +142,13 @@ export default function App(): JSX.Element {
             onOpenFolder={(id) => {
               const job = state.jobs.find((j) => j.id === id)
               if (!job) return
-              // outputPath may include filename pattern like /renders/scene/frame_####
-              // Open the directory portion
-              const dir = job.outputPath.replace(/\\/g, '/').replace(/\/[^/]+$/, '')
-              window.api.openPath(dir || job.outputPath)
+              const parentDir = (p: string) => p.replace(/\\/g, '/').replace(/\/[^/]+$/, '')
+              // Prefer the actual saved frame's directory (guaranteed to exist)
+              // Fall back to blend file's directory
+              const target = job.lastFramePath
+                ? parentDir(job.lastFramePath)
+                : parentDir(job.blendFile)
+              window.api.openPath(target)
             }}
           />
         </div>

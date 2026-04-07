@@ -57,14 +57,14 @@ export function AddJobPanel({ initialData, defaultOutputPath, defaultOutputEnabl
     if (initialData.sceneName) setName(initialData.sceneName)
   }, [initialData])
 
-  const canSubmit = blendFile.trim() && outputPath.trim()
+  const canSubmit = !!blendFile.trim()
 
   const handleSubmit = (): void => {
     const jobName = name.trim() || blendFile.split(/[\\/]/).pop()?.replace('.blend', '') || 'Render Job'
     onAdd({
       name: jobName,
       blendFile: blendFile.trim(),
-      outputPath: outputPath.trim(),
+      outputPath: outputPath.trim() || undefined,
       engine,
       frameStart,
       frameEnd,
@@ -146,12 +146,12 @@ export function AddJobPanel({ initialData, defaultOutputPath, defaultOutputEnabl
           </div>
 
           <div className={styles.field}>
-            <label>Output Path *</label>
+            <label>Output Path</label>
             <div className={styles.row}>
-              <input value={outputPath} onChange={(e) => setOutputPath(e.target.value)} placeholder="/renders/frame_####" />
+              <input value={outputPath} onChange={(e) => setOutputPath(e.target.value)} placeholder="From .blend file (leave empty to use scene default)" />
               <button className={styles.btnPick} onClick={pickOutput}>Browse</button>
             </div>
-            <span className={styles.hint}>Use #### for frame number padding (Blender convention)</span>
+            <span className={styles.hint}>Leave empty to use the output path saved in the .blend file. Use #### for frame padding.</span>
           </div>
 
           <div className={styles.twoCol}>

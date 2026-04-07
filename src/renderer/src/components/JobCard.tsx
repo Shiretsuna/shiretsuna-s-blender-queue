@@ -29,58 +29,64 @@ export function JobCard({ job, index, selected, onSelect, onRemove, onCancel, on
       className={`${styles.card} ${styles[job.status]} ${selected ? styles.selected : ''}`}
       onClick={onSelect}
     >
-      <div className={styles.header}>
-        <span className={styles.index}>#{index + 1}</span>
-        <span className={styles.name}>{job.name}</span>
-        <span className={`${styles.badge} ${styles[job.status]}`}>
-          {job.status === 'running' && <span className={styles.pulseDot} />}
-          {STATUS_LABEL[job.status]}
-        </span>
+      {job.thumbnail && (
+        <img src={job.thumbnail} alt="" className={styles.thumb} />
+      )}
 
-        <div className={styles.btns} onClick={(e) => e.stopPropagation()}>
-          {(job.status === 'failed' || job.status === 'cancelled') && (
-            <button className={styles.btnRetry} onClick={onRetry} title="Retry">↺</button>
-          )}
-          {(job.status === 'running' || job.status === 'pending') && (
-            <button className={styles.btnCancel} onClick={onCancel} title="Cancel">✕</button>
-          )}
-          {job.status !== 'running' && (
-            <button className={styles.btnFolder} onClick={onOpenFolder} title="Open output folder">↗</button>
-          )}
-          {job.status !== 'running' && (
-            <button className={styles.btnRemove} onClick={onRemove} title="Remove">🗑</button>
+      <div className={styles.content}>
+        <div className={styles.header}>
+          <span className={styles.index}>#{index + 1}</span>
+          <span className={styles.name}>{job.name}</span>
+          <span className={`${styles.badge} ${styles[job.status]}`}>
+            {job.status === 'running' && <span className={styles.pulseDot} />}
+            {STATUS_LABEL[job.status]}
+          </span>
+
+          <div className={styles.btns} onClick={(e) => e.stopPropagation()}>
+            {(job.status === 'failed' || job.status === 'cancelled') && (
+              <button className={styles.btnRetry} onClick={onRetry} title="Retry">↺</button>
+            )}
+            {(job.status === 'running' || job.status === 'pending') && (
+              <button className={styles.btnCancel} onClick={onCancel} title="Cancel">✕</button>
+            )}
+            {job.status !== 'running' && (
+              <button className={styles.btnFolder} onClick={onOpenFolder} title="Open output folder">↗</button>
+            )}
+            {job.status !== 'running' && (
+              <button className={styles.btnRemove} onClick={onRemove} title="Remove">🗑</button>
+            )}
+          </div>
+        </div>
+
+        <div className={styles.meta}>
+          <span className={styles.file} title={job.blendFile}>{shortPath(job.blendFile)}</span>
+          <span className={styles.sep}>·</span>
+          <span>{job.engine}</span>
+          <span className={styles.sep}>·</span>
+          <span>F{job.frameStart}–{job.frameEnd} ({totalFrames} frames)</span>
+          {duration && (
+            <>
+              <span className={styles.sep}>·</span>
+              <span>{duration}</span>
+            </>
           )}
         </div>
-      </div>
 
-      <div className={styles.meta}>
-        <span className={styles.file} title={job.blendFile}>{shortPath(job.blendFile)}</span>
-        <span className={styles.sep}>·</span>
-        <span>{job.engine}</span>
-        <span className={styles.sep}>·</span>
-        <span>F{job.frameStart}–{job.frameEnd} ({totalFrames} frames)</span>
-        {duration && (
-          <>
-            <span className={styles.sep}>·</span>
-            <span>{duration}</span>
-          </>
+        {job.status === 'running' && (
+          <div className={styles.progressWrap}>
+            <div className={styles.progressBar}>
+              <div className={styles.progressFill} style={{ width: `${job.progress}%` }} />
+            </div>
+            <span className={styles.progressLabel}>
+              {job.currentFrame != null ? `Frame ${job.currentFrame}` : ''} {job.progress}%
+            </span>
+          </div>
+        )}
+
+        {job.status === 'failed' && job.error && (
+          <div className={styles.error}>{job.error}</div>
         )}
       </div>
-
-      {job.status === 'running' && (
-        <div className={styles.progressWrap}>
-          <div className={styles.progressBar}>
-            <div className={styles.progressFill} style={{ width: `${job.progress}%` }} />
-          </div>
-          <span className={styles.progressLabel}>
-            {job.currentFrame != null ? `Frame ${job.currentFrame}` : ''} {job.progress}%
-          </span>
-        </div>
-      )}
-
-      {job.status === 'failed' && job.error && (
-        <div className={styles.error}>{job.error}</div>
-      )}
     </div>
   )
 }

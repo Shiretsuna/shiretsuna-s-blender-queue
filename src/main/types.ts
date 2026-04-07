@@ -6,7 +6,7 @@ export interface RenderJob {
   id: string
   name: string
   blendFile: string
-  outputPath: string
+  outputPath?: string
   engine: RenderEngine
   frameStart: number
   frameEnd: number
