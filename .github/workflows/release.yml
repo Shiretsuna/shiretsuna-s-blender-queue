@@ -72,7 +72,7 @@ jobs:
           $version = node -p "require('./package.json').version"
           $src = "release\Fox Blender Queue-$version-windows-x64.exe"
           $dst = "release\Fox Blender Queue-$version-windows-portable.exe"
-          if (Test-Path $src) { Rename-Item $src $dst }
+          if (Test-Path $src) { Move-Item -Path $src -Destination $dst }
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
