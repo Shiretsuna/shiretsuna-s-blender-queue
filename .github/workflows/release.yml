@@ -19,13 +19,10 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            build_args: --win nsis portable zip
-            # "Fox Blender Queue*" naturally excludes elevate.exe and blockmap files
+            build_args: --win nsis portable
             artifact_pattern: release/Fox Blender Queue*.exe
-            artifact_pattern2: release/Fox Blender Queue*.zip
           - os: macos-latest
             build_args: --mac dmg zip
-            # Only Mac files are in release/ on a Mac runner — safe to use *.dmg / *.zip
             artifact_pattern: release/*.dmg
             artifact_pattern2: release/*.zip
           - os: ubuntu-latest
@@ -45,19 +42,38 @@ jobs:
           node-version: 20
           cache: npm
 
+      # Sync package.json version to match the git tag (e.g. v1.2.3 → 1.2.3)
+      # Falls back gracefully when triggered manually without a version tag
+      - name: Sync version from tag
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          if [[ "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            npm version "$TAG" --no-git-tag-version
+          fi
+
       - name: Install dependencies
         run: npm ci
 
       - name: Build app
         run: npm run build
 
-      # Package without publishing — artifacts are uploaded below
       - name: Package
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
         run: npx electron-builder ${{ matrix.build_args }} --publish never
 
-      # Upload only the relevant files to the GitHub Release, nothing else
+      # electron-builder has no portable-specific artifactName option,
+      # so we rename it here to make "portable" explicit in the filename
+      - name: Label portable executable
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          $src = "release\Fox Blender Queue-$version-windows-x64.exe"
+          $dst = "release\Fox Blender Queue-$version-windows-portable.exe"
+          if (Test-Path $src) { Rename-Item $src $dst }
+
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
