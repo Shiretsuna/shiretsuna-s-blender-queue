@@ -1,0 +1,60 @@
+name: Build & Release
+
+# Triggers on version tags (e.g. v1.0.0) or manual dispatch from the Actions tab
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+# Needs write access to create GitHub Releases and upload assets
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    strategy:
+      fail-fast: false   # keep building other platforms even if one fails
+      matrix:
+        include:
+          - os: windows-latest
+            build_args: --win nsis portable
+          - os: macos-latest
+            build_args: --mac dmg zip
+          - os: ubuntu-latest
+            build_args: --linux AppImage deb
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # Linux needs a few system libs for electron-builder
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev rpm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build app
+        run: npm run build
+
+      # Builds the installers and uploads them directly to the GitHub Release.
+      # CSC_IDENTITY_AUTO_DISCOVERY=false skips code signing (no certificate needed).
+      # GH_TOKEN lets electron-builder create the release and upload assets.
+      - name: Package & publish
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder ${{ matrix.build_args }} --publish always
