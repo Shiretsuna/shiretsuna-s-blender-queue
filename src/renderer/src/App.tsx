@@ -89,8 +89,10 @@ export default function App(): JSX.Element {
     }
   }, [openAddPanel])
 
-  const selectedJob: RenderJob | undefined =
-    state?.jobs.find((j) => j.id === selectedJobId)
+  // Auto-select the running job; fall back to last selected
+  const runningJob = state?.jobs.find((j) => j.status === 'running')
+  const effectiveJobId = runningJob ? runningJob.id : selectedJobId
+  const selectedJob: RenderJob | undefined = state?.jobs.find((j) => j.id === effectiveJobId)
 
   const handleSelectJob = useCallback((id: string) => {
     setSelectedJobId((prev) => (prev === id ? null : id))
@@ -128,14 +130,12 @@ export default function App(): JSX.Element {
           />
         </div>
 
-        {selectedJob && (
-          <div className={styles.detailPanel}>
-            <JobDetailPanel
-              job={selectedJob}
-              onClose={() => setSelectedJobId(null)}
-            />
-          </div>
-        )}
+        <div className={styles.detailPanel}>
+          <JobDetailPanel
+            job={selectedJob}
+            onClose={() => setSelectedJobId(null)}
+          />
+        </div>
       </div>
 
       <BottomBar state={state} />

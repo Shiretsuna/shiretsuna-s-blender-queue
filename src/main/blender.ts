@@ -1,12 +1,13 @@
 import { spawn, ChildProcess } from 'child_process'
 import { RenderJob } from './types'
 
-// Regex to parse Blender's frame output: "Fra:10 Mem:..."
+// "Fra:10 Mem:..." — fires at the start of each frame render
 const FRAME_RE = /^Fra:(\d+)\s/m
-// Blender completion line
-const DONE_RE = /Saved:\s*'(.+)'/
+// "Saved: '/path/to/frame_0001.png'" — fires when a frame file is written
+const SAVED_RE = /Saved:\s*'(.+?)'\s/
 
-export type ProgressCallback = (frame: number, line: string) => void
+// savedPath is set only on the Saved: line, undefined on Fra: lines
+export type ProgressCallback = (frame: number, line: string, savedPath?: string) => void
 export type DoneCallback = (exitCode: number | null, error?: string) => void
 
 export function spawnBlender(
@@ -21,9 +22,14 @@ export function spawnBlender(
   const handleLine = (line: string): void => {
     const frameMatch = FRAME_RE.exec(line)
     if (frameMatch) {
-      onProgress(parseInt(frameMatch[1], 10), line)
-    } else if (DONE_RE.test(line)) {
-      onProgress(job.currentFrame ?? job.frameStart, line)
+      // Frame started — report progress tick (no savedPath)
+      onProgress(parseInt(frameMatch[1], 10), line, undefined)
+      return
+    }
+    const savedMatch = SAVED_RE.exec(line)
+    if (savedMatch) {
+      // Frame file written — report saved path (no progress tick)
+      onProgress(job.currentFrame ?? job.frameStart, line, savedMatch[1])
     }
   }
 
@@ -41,10 +47,10 @@ export function spawnBlender(
     stderrBuf += chunk.toString()
     const lines = stderrBuf.split('\n')
     stderrBuf = lines.pop() ?? ''
-    lines.forEach((line) => {
-      if (line.trim()) lastError = line
-    })
+    lines.forEach((line) => { if (line.trim()) lastError = line })
   })
+
+  proc.on('error', (err) => onDone(null, err.message))
 
   proc.on('close', (code) => {
     onDone(code, code !== 0 ? lastError || `Blender exited with code ${code}` : undefined)
@@ -64,28 +70,20 @@ function buildArgs(job: RenderJob): string[] {
     '-t', String(job.threads)
   ]
 
-  if (job.resolutionX != null) {
-    args.push('--python-expr',
-      `import bpy; bpy.context.scene.render.resolution_x = ${job.resolutionX}`)
-  }
-  if (job.resolutionY != null) {
-    args.push('--python-expr',
-      `import bpy; bpy.context.scene.render.resolution_y = ${job.resolutionY}`)
-  }
-  if (job.resolutionScale != null) {
-    args.push('--python-expr',
-      `import bpy; bpy.context.scene.render.resolution_percentage = ${job.resolutionScale}`)
-  }
-  if (job.samples != null) {
+  if (job.resolutionX != null)
+    args.push('--python-expr', `import bpy; bpy.context.scene.render.resolution_x = ${job.resolutionX}`)
+  if (job.resolutionY != null)
+    args.push('--python-expr', `import bpy; bpy.context.scene.render.resolution_y = ${job.resolutionY}`)
+  if (job.resolutionScale != null)
+    args.push('--python-expr', `import bpy; bpy.context.scene.render.resolution_percentage = ${job.resolutionScale}`)
+  if (job.samples != null)
     args.push('--python-expr',
       `import bpy; s = bpy.context.scene; hasattr(s.cycles, 'samples') and setattr(s.cycles, 'samples', ${job.samples}) or setattr(s.eevee, 'taa_render_samples', ${job.samples})`)
-  }
 
   args.push('-x', '1', '-a')
   return args
 }
 
-/** Try common default Blender install paths per platform */
 export function getDefaultBlenderPaths(): string[] {
   const platform = process.platform
   if (platform === 'win32') {

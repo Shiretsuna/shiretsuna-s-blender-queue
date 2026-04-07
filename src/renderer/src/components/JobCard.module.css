@@ -1,21 +1,33 @@
 .card {
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 12px 14px;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
   border-left: 3px solid transparent;
+  position: relative;
 }
 
-.card:hover { background: var(--bg-elevated); }
-.card.selected { border-color: var(--accent); background: var(--bg-elevated); }
+.card:hover {
+  background: var(--bg-elevated);
+  border-color: #44446a;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+}
+
+.card.selected {
+  background: var(--bg-elevated);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(232, 125, 13, 0.2);
+}
 
 .card.running  { border-left-color: var(--warning); }
 .card.completed { border-left-color: var(--success); }
-.card.failed   { border-left-color: var(--error); }
+.card.failed    { border-left-color: var(--error); }
 .card.cancelled { border-left-color: var(--text-muted); }
+.card.pending   { border-left-color: var(--info); }
 
+/* ── Header row ──────────────────────────────────────────── */
 .header {
   display: flex;
   align-items: center;
@@ -26,7 +38,8 @@
 .index {
   font-size: 11px;
   color: var(--text-muted);
-  min-width: 24px;
+  min-width: 22px;
+  font-variant-numeric: tabular-nums;
 }
 
 .name {
@@ -38,38 +51,63 @@
   text-overflow: ellipsis;
 }
 
+/* Status badge */
 .badge {
   font-size: 10px;
-  font-weight: 600;
-  padding: 2px 7px;
+  font-weight: 700;
+  padding: 2px 8px;
   border-radius: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
-.badge.pending   { background: rgba(80, 144, 232, 0.15); color: var(--info); }
+.badge.pending   { background: rgba(80, 144, 232, 0.12); color: var(--info); }
 .badge.running   { background: rgba(232, 160, 32, 0.15); color: var(--warning); }
 .badge.completed { background: rgba(76, 175, 110, 0.15); color: var(--success); }
 .badge.failed    { background: rgba(224, 82, 82, 0.15);  color: var(--error); }
-.badge.cancelled { background: rgba(96, 96, 128, 0.15); color: var(--text-muted); }
+.badge.cancelled { background: rgba(96, 96, 128, 0.12); color: var(--text-muted); }
 
+/* Animated dot for running */
+.pulseDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--warning);
+  animation: pulse 1.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.7); }
+}
+
+/* Action buttons */
 .btns {
   display: flex;
-  gap: 4px;
+  gap: 2px;
+  flex-shrink: 0;
 }
 
 .btns button {
   background: none;
   color: var(--text-muted);
-  padding: 2px 6px;
+  padding: 3px 7px;
   font-size: 13px;
-  border-radius: 4px;
+  border-radius: 5px;
+  transition: background 0.1s, color 0.1s;
 }
-.btns button:hover { background: var(--bg-hover); color: var(--text-primary); }
-.btnRetry:hover { color: var(--info) !important; }
-.btnCancel:hover { color: var(--error) !important; }
 
+.btns button:hover { background: var(--bg-hover); color: var(--text-primary); }
+.btnRetry:hover  { color: var(--info) !important; }
+.btnCancel:hover { color: var(--error) !important; }
+.btnRemove:hover { color: var(--error) !important; }
+
+/* ── Meta row ────────────────────────────────────────────── */
 .meta {
   display: flex;
   align-items: center;
@@ -77,17 +115,22 @@
   font-size: 12px;
   color: var(--text-secondary);
   flex-wrap: wrap;
+  line-height: 1.4;
 }
 
 .file {
-  max-width: 260px;
+  max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
 }
 
-.sep { color: var(--text-muted); }
+.sep { color: var(--border); }
 
+/* ── Progress bar ────────────────────────────────────────── */
 .progressWrap {
   display: flex;
   align-items: center;
@@ -97,17 +140,17 @@
 
 .progressBar {
   flex: 1;
-  height: 6px;
-  background: var(--bg-elevated);
-  border-radius: 3px;
+  height: 4px;
+  background: var(--bg-hover);
+  border-radius: 2px;
   overflow: hidden;
 }
 
 .progressFill {
   height: 100%;
   background: var(--accent);
-  border-radius: 3px;
-  transition: width 0.4s ease;
+  border-radius: 2px;
+  transition: width 0.5s ease;
 }
 
 .progressLabel {
@@ -116,16 +159,19 @@
   white-space: nowrap;
   min-width: 80px;
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
+/* ── Error ───────────────────────────────────────────────── */
 .error {
   margin-top: 8px;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--error);
-  background: rgba(224, 82, 82, 0.08);
+  background: rgba(224, 82, 82, 0.07);
   border-radius: 4px;
-  padding: 6px 8px;
+  padding: 5px 8px;
   font-family: var(--font-mono);
-  white-space: pre-wrap;
-  word-break: break-all;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

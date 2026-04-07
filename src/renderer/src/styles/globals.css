@@ -5,22 +5,23 @@
 }
 
 :root {
-  --bg-base: #0f0f1a;
-  --bg-surface: #1a1a2e;
-  --bg-elevated: #242440;
-  --bg-hover: #2e2e50;
-  --border: #333355;
-  --accent: #e87d0d;
-  --accent-dim: #a35b08;
-  --text-primary: #e8e8f0;
-  --text-secondary: #9090b0;
-  --text-muted: #606080;
-  --success: #4caf6e;
-  --error: #e05252;
+  --bg-base:     #0d0d18;
+  --bg-surface:  #13131f;
+  --bg-elevated: #1c1c2e;
+  --bg-hover:    #252538;
+  --border:      #2a2a44;
+  --accent:      #f07d10;
+  --accent-dim:  #a35b08;
+  --text-primary:   #eaeaf4;
+  --text-secondary: #8888aa;
+  --text-muted:     #55556a;
+  --success: #3fb86a;
+  --error:   #e04f4f;
   --warning: #e8a020;
-  --info: #5090e8;
-  --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --info:    #4d8ee0;
+  --font:      'Segoe UI', system-ui, -apple-system, sans-serif;
   --font-mono: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+  --radius: 8px;
 }
 
 html, body, #root {
@@ -98,4 +99,8 @@ hr {
 ::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3a5a;
 }

@@ -1,26 +1,50 @@
+/* ── Panel shell ─────────────────────────────────────────── */
 .panel {
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow: hidden;
   background: var(--bg-surface);
 }
 
+/* ── Empty state ─────────────────────────────────────────── */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 12px;
+  padding: 40px;
+  text-align: center;
+}
+
+.emptyIcon {
+  font-size: 40px;
+  color: var(--border);
+  line-height: 1;
+}
+
+.emptyTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.emptyHint {
+  font-size: 12px;
+  color: var(--text-muted);
+  max-width: 220px;
+  line-height: 1.6;
+}
+
+/* ── Header ──────────────────────────────────────────────── */
 .header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 10px;
   padding: 12px 14px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
-  gap: 8px;
-}
-
-.headerLeft {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  overflow: hidden;
 }
 
 .dot {
@@ -30,24 +54,38 @@
   flex-shrink: 0;
 }
 
-.name {
+.headerMeta {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.jobName {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.close {
+.statusLabel {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.closeBtn {
   background: none;
   color: var(--text-muted);
-  font-size: 14px;
-  padding: 2px 6px;
+  font-size: 13px;
+  padding: 3px 6px;
   flex-shrink: 0;
+  border-radius: 4px;
 }
-.close:hover { color: var(--text-primary); }
+.closeBtn:hover { background: var(--bg-hover); color: var(--text-primary); }
 
-/* Scrollable body */
+/* ── Scrollable body ─────────────────────────────────────── */
 .body {
   flex: 1;
   overflow-y: auto;
@@ -57,42 +95,60 @@
   gap: 10px;
 }
 
-/* Thumbnail */
-.thumbnailWrap {
+/* ── Section label ───────────────────────────────────────── */
+.sectionLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* ── Frame preview ───────────────────────────────────────── */
+.previewSection {
   display: flex;
-  justify-content: center;
-  background: #000;
-  border-radius: 6px;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.previewWrap {
+  position: relative;
+  border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--border);
+  background: #000;
+  line-height: 0;
 }
 
-.thumbnail {
-  max-width: 100%;
-  max-height: 180px;
-  object-fit: contain;
+.previewImg {
+  width: 100%;
   display: block;
-  image-rendering: pixelated;
+  max-height: 200px;
+  object-fit: contain;
 }
 
-.noThumb {
-  text-align: center;
-  padding: 24px;
-  color: var(--text-muted);
-  font-size: 12px;
-  background: var(--bg-elevated);
-  border-radius: 6px;
-  border: 1px dashed var(--border);
+.previewFrameBadge {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+  backdrop-filter: blur(4px);
 }
 
-/* Progress */
+/* ── Progress ────────────────────────────────────────────── */
 .progressSection {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.progressHeader {
+.progressRow {
   display: flex;
   justify-content: space-between;
   font-size: 12px;
@@ -100,43 +156,85 @@
 }
 
 .progressTrack {
-  height: 8px;
+  height: 6px;
   background: var(--bg-elevated);
-  border-radius: 4px;
+  border-radius: 3px;
   overflow: hidden;
 }
 
 .progressFill {
   height: 100%;
   background: var(--accent);
-  border-radius: 4px;
-  transition: width 0.4s ease;
+  border-radius: 3px;
+  transition: width 0.5s ease;
 }
 
-/* Error */
+/* ── Error ───────────────────────────────────────────────── */
 .errorBox {
-  background: rgba(224, 82, 82, 0.1);
-  border: 1px solid rgba(224, 82, 82, 0.3);
+  background: rgba(224, 82, 82, 0.08);
+  border: 1px solid rgba(224, 82, 82, 0.25);
   border-radius: 6px;
   padding: 8px 10px;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--error);
   font-family: var(--font-mono);
   white-space: pre-wrap;
   word-break: break-all;
 }
 
-/* Section label */
-.section {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-muted);
-  font-weight: 600;
-  margin-top: 4px;
+/* ── Editable frame range ────────────────────────────────── */
+.frameRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
 }
 
-/* Params */
+.frameField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.frameField label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 0;
+}
+
+.frameField input {
+  padding: 5px 8px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.frameField input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.frameSep {
+  color: var(--text-muted);
+  font-size: 14px;
+  padding-bottom: 6px;
+  flex-shrink: 0;
+}
+
+.frameCount {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  padding-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.editHint {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── Params ──────────────────────────────────────────────── */
 .params {
   display: flex;
   flex-direction: column;
@@ -147,6 +245,7 @@
   display: flex;
   gap: 8px;
   font-size: 12px;
+  align-items: baseline;
 }
 
 .paramLabel {
@@ -157,10 +256,13 @@
 
 .paramValue {
   color: var(--text-secondary);
+  flex: 1;
+}
+
+.truncate {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  flex: 1;
 }
 
 .mono {
@@ -168,8 +270,8 @@
   font-size: 11px;
 }
 
-/* Open output */
-.btnOpen {
+/* ── Open folder ─────────────────────────────────────────── */
+.openFolderBtn {
   background: none;
   color: var(--accent);
   font-size: 12px;
@@ -177,12 +279,12 @@
   text-align: left;
   align-self: flex-start;
 }
-.btnOpen:hover { text-decoration: underline; }
+.openFolderBtn:hover { text-decoration: underline; }
 
-/* Log */
+/* ── Log ─────────────────────────────────────────────────── */
 .log {
-  flex: 1;
-  min-height: 100px;
+  min-height: 80px;
+  max-height: 220px;
   background: var(--bg-base);
   border: 1px solid var(--border);
   border-radius: 6px;

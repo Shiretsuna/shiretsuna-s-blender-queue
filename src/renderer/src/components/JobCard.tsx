@@ -31,7 +31,10 @@ export function JobCard({ job, index, selected, onSelect, onRemove, onCancel, on
       <div className={styles.header}>
         <span className={styles.index}>#{index + 1}</span>
         <span className={styles.name}>{job.name}</span>
-        <span className={`${styles.badge} ${styles[job.status]}`}>{STATUS_LABEL[job.status]}</span>
+        <span className={`${styles.badge} ${styles[job.status]}`}>
+          {job.status === 'running' && <span className={styles.pulseDot} />}
+          {STATUS_LABEL[job.status]}
+        </span>
 
         <div className={styles.btns} onClick={(e) => e.stopPropagation()}>
           {(job.status === 'failed' || job.status === 'cancelled') && (

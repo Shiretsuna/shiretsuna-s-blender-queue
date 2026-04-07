@@ -24,7 +24,8 @@ export interface RenderJob {
   durationMs?: number
   error?: string
   log: string[]
-  thumbnail?: string // base64 PNG data URL extracted from .blend file
+  thumbnail?: string    // base64 PNG data URL extracted from .blend file
+  lastFramePath?: string // absolute path of the last successfully rendered frame
 }
 
 export interface BlendInfo {

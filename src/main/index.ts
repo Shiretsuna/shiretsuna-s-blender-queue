@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, shell, nativeImage } from 'electron'
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { RenderQueue } from './queue'
@@ -59,6 +59,16 @@ ipcMain.handle('queue:start', () => queue.startQueue())
 ipcMain.handle('queue:pause', () => queue.pauseQueue())
 ipcMain.handle('queue:cancel-job', (_e, id: string) => queue.cancelJob(id))
 ipcMain.handle('queue:retry-job', (_e, id: string) => queue.retryJob(id))
+ipcMain.handle('queue:update-job-params', (_e, id: string, patch) => queue.updateJobParams(id, patch))
+
+// Load the last rendered frame as a resized thumbnail (480px wide max)
+ipcMain.handle('render:frame-preview', (_e, filePath: string): string | null => {
+  try {
+    const img = nativeImage.createFromPath(filePath)
+    if (img.isEmpty()) return null
+    return `data:image/png;base64,${img.resize({ width: 480 }).toPNG().toString('base64')}`
+  } catch { return null }
+})
 
 ipcMain.handle('queue:set-blender-path', (_e, path: string) => {
   queue.setBlenderPath(path)

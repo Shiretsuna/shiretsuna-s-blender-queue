@@ -21,6 +21,8 @@ const api = {
   detectBlender: (): Promise<string | null> => ipcRenderer.invoke('blender:detect'),
   openPath: (path: string): Promise<void> => ipcRenderer.invoke('shell:open-path', path),
   readBlendInfo: (filePath: string): Promise<BlendInfo> => ipcRenderer.invoke('blend:read-info', filePath),
+  updateJobParams: (id: string, patch: Partial<RenderJob>): Promise<void> => ipcRenderer.invoke('queue:update-job-params', id, patch),
+  readFramePreview: (filePath: string): Promise<string | null> => ipcRenderer.invoke('render:frame-preview', filePath),
 
   onStateUpdate: (cb: (state: QueueState) => void): (() => void) => {
     const handler = (_: Electron.IpcRendererEvent, state: QueueState): void => cb(state)
