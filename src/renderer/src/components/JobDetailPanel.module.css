@@ -311,6 +311,40 @@
   font-size: 11px;
 }
 
+/* ── Format row ──────────────────────────────────────────── */
+.formatRow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* ── ETA ─────────────────────────────────────────────────── */
+.eta {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+/* ── Log header ──────────────────────────────────────────── */
+.logHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.exportBtn {
+  background: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.exportBtn:hover { background: var(--bg-hover); color: var(--accent); }
+
 /* ── Open folder ─────────────────────────────────────────── */
 .openFolderBtn {
   background: none;

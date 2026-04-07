@@ -5,11 +5,17 @@ interface Props {
   job: RenderJob
   index: number
   selected: boolean
+  isDragging: boolean
+  isDragOver: boolean
   onSelect: () => void
   onRemove: () => void
   onCancel: () => void
   onRetry: () => void
   onOpenFolder: () => void
+  onDragStart: () => void
+  onDragOver: (e: React.DragEvent) => void
+  onDrop: () => void
+  onDragEnd: () => void
 }
 
 const STATUS_LABEL: Record<JobStatus, string> = {
@@ -20,15 +26,39 @@ const STATUS_LABEL: Record<JobStatus, string> = {
   cancelled: 'Cancelled'
 }
 
-export function JobCard({ job, index, selected, onSelect, onRemove, onCancel, onRetry, onOpenFolder }: Props): JSX.Element {
+export function JobCard({
+  job, index, selected, isDragging, isDragOver,
+  onSelect, onRemove, onCancel, onRetry, onOpenFolder,
+  onDragStart, onDragOver, onDrop, onDragEnd
+}: Props): JSX.Element {
   const totalFrames = Math.floor((job.frameEnd - job.frameStart) / job.frameStep) + 1
   const duration = job.durationMs != null ? formatDuration(job.durationMs) : null
 
   return (
     <div
-      className={`${styles.card} ${styles[job.status]} ${selected ? styles.selected : ''}`}
+      className={[
+        styles.card,
+        styles[job.status],
+        selected ? styles.selected : '',
+        isDragging ? styles.dragging : '',
+        isDragOver ? styles.dragOver : ''
+      ].join(' ')}
       onClick={onSelect}
+      onDragOver={onDragOver}
+      onDrop={(e) => { e.preventDefault(); onDrop() }}
     >
+      {/* Drag handle */}
+      <div
+        className={styles.dragHandle}
+        draggable
+        onDragStart={(e) => { e.stopPropagation(); onDragStart() }}
+        onDragEnd={onDragEnd}
+        onClick={(e) => e.stopPropagation()}
+        title="Drag to reorder"
+      >
+        ⠿
+      </div>
+
       {job.thumbnail && (
         <img src={job.thumbnail} alt="" className={styles.thumb} />
       )}
@@ -63,12 +93,10 @@ export function JobCard({ job, index, selected, onSelect, onRemove, onCancel, on
           <span className={styles.sep}>·</span>
           <span>{job.engine}</span>
           <span className={styles.sep}>·</span>
-          <span>F{job.frameStart}–{job.frameEnd} ({totalFrames} frames)</span>
-          {duration && (
-            <>
-              <span className={styles.sep}>·</span>
-              <span>{duration}</span>
-            </>
+          <span>F{job.frameStart}–{job.frameEnd} ({totalFrames} fr.)</span>
+          {duration && <><span className={styles.sep}>·</span><span>{duration}</span></>}
+          {job.resumeFromFrame != null && (
+            <span className={styles.resumeBadge} title={`Will resume from frame ${job.resumeFromFrame}`}>↩ resume</span>
           )}
         </div>
 
@@ -78,7 +106,8 @@ export function JobCard({ job, index, selected, onSelect, onRemove, onCancel, on
               <div className={styles.progressFill} style={{ width: `${job.progress}%` }} />
             </div>
             <span className={styles.progressLabel}>
-              {job.currentFrame != null ? `Frame ${job.currentFrame}` : ''} {job.progress}%
+              {job.currentFrame != null ? `Fr.${job.currentFrame}` : ''} {job.progress}%
+              {job.etaMs != null && job.etaMs > 0 && <span className={styles.eta}> ~{formatDuration(job.etaMs)}</span>}
             </span>
           </div>
         )}

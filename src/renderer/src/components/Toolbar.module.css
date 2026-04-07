@@ -32,6 +32,17 @@
   letter-spacing: 0.01em;
 }
 
+.version {
+  font-size: 10px;
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  padding: 1px 7px;
+  border-radius: 8px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .stats {
   display: flex;
   gap: 6px;

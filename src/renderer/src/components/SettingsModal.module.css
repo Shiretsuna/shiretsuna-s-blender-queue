@@ -1,3 +1,24 @@
+.concurrentRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.slider {
+  flex: 1;
+  accent-color: var(--accent);
+  height: 4px;
+  cursor: pointer;
+}
+
+.concurrentValue {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 20px;
+  text-align: center;
+}
+
 .toggleRow {
   display: flex;
   align-items: center;

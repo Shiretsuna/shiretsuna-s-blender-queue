@@ -31,6 +31,28 @@
 .card.cancelled { border-left-color: var(--text-muted); }
 .card.pending   { border-left-color: var(--info); }
 
+/* ── Drag handle ─────────────────────────────────────────── */
+.dragHandle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  flex-shrink: 0;
+  color: var(--border);
+  font-size: 14px;
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.15s;
+  align-self: center;
+  user-select: none;
+}
+.card:hover .dragHandle { opacity: 1; }
+.dragHandle:active { cursor: grabbing; }
+
+/* ── Drag states ─────────────────────────────────────────── */
+.dragging { opacity: 0.4; }
+.dragOver { border-top: 2px solid var(--accent) !important; }
+
 /* ── Thumbnail ───────────────────────────────────────────── */
 .thumb {
   width: 68px;
@@ -154,6 +176,19 @@
 }
 
 .sep { color: var(--border); }
+
+.resumeBadge {
+  font-size: 10px;
+  color: var(--info);
+  background: rgba(77,142,224,0.1);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.eta {
+  color: var(--text-muted);
+  font-size: 10px;
+}
 
 /* ── Progress bar ────────────────────────────────────────── */
 .progressWrap {

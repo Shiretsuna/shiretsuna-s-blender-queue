@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { QueueState, RenderJob, BlendInfo } from '../../main/types'
+import { QueueState, RenderJob, BlendInfo, RenderEngine, OutputFormat } from '../../main/types'
 import { JobList } from './components/JobList'
 import { AddJobPanel } from './components/AddJobPanel'
 import { JobDetailPanel } from './components/JobDetailPanel'
@@ -10,9 +10,15 @@ import { SetupModal } from './components/SetupModal'
 import styles from './styles/App.module.css'
 
 declare global {
-  interface Window {
-    api: import('../../preload/index').API
-  }
+  interface Window { api: import('../../preload/index').API }
+}
+
+const VALID_ENGINES: RenderEngine[] = ['CYCLES', 'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT']
+function toEngine(raw?: string): RenderEngine {
+  return raw && VALID_ENGINES.includes(raw as RenderEngine) ? raw as RenderEngine : 'CYCLES'
+}
+function sanitizeOutputPath(p: string): string {
+  return p.replace(/^\/\//, '').replace(/\\/g, '/')
 }
 
 export default function App(): JSX.Element {
@@ -29,7 +35,45 @@ export default function App(): JSX.Element {
   const isResizing = useRef(false)
   const resizeStartX = useRef(0)
   const resizeStartW = useRef(0)
+  const prevStateRef = useRef<QueueState | null>(null)
 
+  useEffect(() => {
+    window.api.getState().then((s) => {
+      setState(s)
+      if (!s.blenderPath) setShowSetup(true)
+    })
+    const unsub = window.api.onStateUpdate(setState)
+    return unsub
+  }, [])
+
+  // Notifications
+  useEffect(() => {
+    if (!state || !prevStateRef.current) { prevStateRef.current = state; return }
+    const prev = prevStateRef.current
+
+    state.jobs.forEach((job) => {
+      const prevJob = prev.jobs.find((j) => j.id === job.id)
+      if (job.status === 'failed' && prevJob?.status !== 'failed') {
+        new Notification(`Render failed: ${job.name}`, { body: job.error || 'An error occurred' })
+      }
+    })
+
+    if (prev.isRunning && !state.isRunning && state.jobs.length > 0) {
+      const failed = state.jobs.filter((j) => j.status === 'failed').length
+      const done = state.jobs.filter((j) => j.status === 'completed').length
+      if (done + failed === state.jobs.length) {
+        new Notification("Queue complete", {
+          body: failed > 0
+            ? `${done} rendered, ${failed} failed`
+            : `All ${done} files rendered successfully!`
+        })
+      }
+    }
+
+    prevStateRef.current = state
+  }, [state])
+
+  // Resizable panel
   const handleResizerMouseDown = useCallback((e: React.MouseEvent) => {
     isResizing.current = true
     resizeStartX.current = e.clientX
@@ -52,76 +96,102 @@ export default function App(): JSX.Element {
     }
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup', onUp)
-    return () => {
-      document.removeEventListener('mousemove', onMove)
-      document.removeEventListener('mouseup', onUp)
-    }
+    return () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp) }
   }, [])
 
-  useEffect(() => {
-    window.api.getState().then((s) => {
-      setState(s)
-      // Show setup if no Blender path has been configured yet
-      if (!s.blenderPath) setShowSetup(true)
-    })
-    const unsub = window.api.onStateUpdate(setState)
-    return unsub
-  }, [])
-
-  const openAddPanel = useCallback((data: BlendInfo | null = null) => {
+  const openAddPanel = useCallback((data: (BlendInfo & { filePath?: string }) | null = null) => {
     setAddPanelData(data)
     setShowAddPanel(true)
   }, [])
 
-  // --- Drag & Drop ---
+  // Add multiple files automatically (no panel)
+  const addFilesDirectly = useCallback(async (filePaths: string[]) => {
+    if (!state) return
+    for (const filePath of filePaths) {
+      const name = filePath.replace(/\\/g, '/').split('/').pop()?.replace('.blend', '') || 'Render'
+      try {
+        const info = await window.api.readBlendInfo(filePath)
+        await window.api.addJob({
+          name: info.sceneName || name,
+          blendFile: filePath,
+          outputPath: state.defaultOutputEnabled && state.defaultOutputPath
+            ? `${state.defaultOutputPath.replace(/\\/g, '/')}/${name}/frame_####`
+            : (info.outputPath ? sanitizeOutputPath(info.outputPath) : undefined),
+          engine: toEngine(info.engine),
+          frameStart: info.frameStart ?? 1,
+          frameEnd: info.frameEnd ?? 250,
+          frameStep: info.frameStep ?? 1,
+          threads: 0,
+          samples: info.samples,
+          resolutionX: info.resolutionX,
+          resolutionY: info.resolutionY,
+          resolutionScale: info.resolutionScale,
+          thumbnail: info.thumbnail ?? undefined
+        })
+      } catch {
+        await window.api.addJob({ name, blendFile: filePath, engine: 'CYCLES', frameStart: 1, frameEnd: 250, frameStep: 1, threads: 0 })
+      }
+    }
+  }, [state])
+
+  // Drag & drop
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     dragCounter.current++
-    const hasBlend = Array.from(e.dataTransfer.items).some(
-      (item) => item.kind === 'file' && (item.type === '' || item.type.includes('blend'))
-    )
-    if (hasBlend || e.dataTransfer.items.length > 0) setIsDragOver(true)
+    if (e.dataTransfer.items.length > 0) setIsDragOver(true)
   }, [])
-
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     dragCounter.current--
     if (dragCounter.current === 0) setIsDragOver(false)
   }, [])
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'copy'
-  }, [])
+  const handleDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy' }, [])
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault()
     dragCounter.current = 0
     setIsDragOver(false)
 
-    const files = Array.from(e.dataTransfer.files).filter((f) =>
-      f.name.toLowerCase().endsWith('.blend')
-    )
-    if (files.length === 0) return
+    const filePaths = Array.from(e.dataTransfer.files)
+      .filter((f) => f.name.toLowerCase().endsWith('.blend'))
+      .map((f) => (f as unknown as { path: string }).path)
+      .filter(Boolean)
 
-    // Use the first dropped .blend file
-    const file = files[0]
-    // Electron exposes the real path on File objects
-    const filePath = (file as unknown as { path: string }).path
-    if (!filePath) return
+    if (filePaths.length === 0) return
 
     setIsReadingBlend(true)
     try {
-      const info = await window.api.readBlendInfo(filePath)
-      openAddPanel({ ...info, filePath })
-    } catch {
-      openAddPanel({ thumbnail: null, filePath })
+      if (filePaths.length === 1) {
+        const info = await window.api.readBlendInfo(filePaths[0]).catch(() => ({ thumbnail: null }))
+        openAddPanel({ ...info, filePath: filePaths[0] })
+      } else {
+        await addFilesDirectly(filePaths)
+      }
     } finally {
       setIsReadingBlend(false)
     }
-  }, [openAddPanel])
+  }, [openAddPanel, addFilesDirectly])
 
-  // Auto-select the running job; fall back to last selected
+  // Toolbar add button — opens file picker (multi-select)
+  const handleAddClick = useCallback(async () => {
+    const paths = await window.api.openBlendDialog()
+    if (!paths || paths.length === 0) return
+
+    if (paths.length === 1) {
+      setIsReadingBlend(true)
+      try {
+        const info = await window.api.readBlendInfo(paths[0]).catch(() => ({ thumbnail: null }))
+        openAddPanel({ ...info, filePath: paths[0] })
+      } finally {
+        setIsReadingBlend(false)
+      }
+    } else {
+      setIsReadingBlend(true)
+      try { await addFilesDirectly(paths) }
+      finally { setIsReadingBlend(false) }
+    }
+  }, [openAddPanel, addFilesDirectly])
+
   const runningJob = state?.jobs.find((j) => j.status === 'running')
   const effectiveJobId = runningJob ? runningJob.id : selectedJobId
   const selectedJob: RenderJob | undefined = state?.jobs.find((j) => j.id === effectiveJobId)
@@ -130,9 +200,9 @@ export default function App(): JSX.Element {
     setSelectedJobId((prev) => (prev === id ? null : id))
   }, [])
 
-  if (!state) {
-    return <div className={styles.loading}>Loading...</div>
-  }
+  if (!state) return <div className={styles.loading}>Loading...</div>
+
+  const parentDir = (p: string) => p.replace(/\\/g, '/').replace(/\/[^/]+$/, '')
 
   return (
     <div
@@ -146,19 +216,7 @@ export default function App(): JSX.Element {
         state={state}
         onStart={() => window.api.startQueue()}
         onPause={() => window.api.pauseQueue()}
-        onAddJob={async () => {
-          const filePath = await window.api.openBlendDialog()
-          if (!filePath) return
-          setIsReadingBlend(true)
-          try {
-            const info = await window.api.readBlendInfo(filePath)
-            openAddPanel({ ...info, filePath })
-          } catch {
-            openAddPanel({ thumbnail: null, filePath })
-          } finally {
-            setIsReadingBlend(false)
-          }
-        }}
+        onAddJob={handleAddClick}
         onSettings={() => setShowSettings(true)}
       />
 
@@ -174,39 +232,31 @@ export default function App(): JSX.Element {
             onOpenFolder={(id) => {
               const job = state.jobs.find((j) => j.id === id)
               if (!job) return
-              const parentDir = (p: string) => p.replace(/\\/g, '/').replace(/\/[^/]+$/, '')
-              // Prefer the actual saved frame's directory (guaranteed to exist)
-              // Fall back to blend file's directory
-              const target = job.lastFramePath
-                ? parentDir(job.lastFramePath)
-                : parentDir(job.blendFile)
+              const target = job.lastFramePath ? parentDir(job.lastFramePath) : parentDir(job.blendFile)
               window.api.openPath(target)
             }}
+            onReorder={(ids) => window.api.reorderJobs(ids)}
           />
         </div>
 
         <div className={styles.resizer} onMouseDown={handleResizerMouseDown} />
+
         <div className={styles.detailPanel} style={{ width: detailWidth }}>
-          <JobDetailPanel
-            job={selectedJob}
-            onClose={() => setSelectedJobId(null)}
-          />
+          <JobDetailPanel job={selectedJob} onClose={() => setSelectedJobId(null)} />
         </div>
       </div>
 
       <BottomBar state={state} />
 
-      {/* Drag overlay */}
       {isDragOver && (
         <div className={styles.dragOverlay}>
           <div className={styles.dragBox}>
             <span className={styles.dragIcon}>⬇</span>
-            <span>Drop .blend file to add</span>
+            <span>Drop .blend file{state.jobs.length > 0 ? 's' : ''} to add</span>
           </div>
         </div>
       )}
 
-      {/* Reading blend file overlay */}
       {isReadingBlend && (
         <div className={styles.dragOverlay}>
           <div className={styles.dragBox}>
@@ -226,27 +276,19 @@ export default function App(): JSX.Element {
             setShowAddPanel(false)
             setAddPanelData(null)
           }}
-          onClose={() => {
-            setShowAddPanel(false)
-            setAddPanelData(null)
-          }}
+          onClose={() => { setShowAddPanel(false); setAddPanelData(null) }}
         />
       )}
 
-      {showSetup && (
-        <SetupModal onDone={() => setShowSetup(false)} />
-      )}
+      {showSetup && <SetupModal onDone={() => setShowSetup(false)} />}
 
       {showSettings && (
         <SettingsModal
           state={state}
-          onSetBlenderPath={async (path) => {
-            await window.api.setBlenderPath(path)
-          }}
+          onSetBlenderPath={async (path) => { await window.api.setBlenderPath(path) }}
           onClose={() => setShowSettings(false)}
         />
       )}
-
     </div>
   )
 }

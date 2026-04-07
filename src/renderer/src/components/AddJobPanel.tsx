@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { RenderEngine, RenderJob, BlendInfo } from '../../../main/types'
+import { RenderEngine, RenderJob, BlendInfo, OutputFormat } from '../../../main/types'
 import styles from './Modal.module.css'
 import panelStyles from './AddJobPanel.module.css'
 
@@ -33,6 +33,7 @@ export function AddJobPanel({ initialData, defaultOutputPath, defaultOutputEnabl
   const [resX, setResX] = useState<number | ''>('')
   const [resY, setResY] = useState<number | ''>('')
   const [resScale, setResScale] = useState<number | ''>('')
+  const [outputFormat, setOutputFormat] = useState<OutputFormat | ''>('')
 
   // Pre-fill fields when initialData is provided (from drag & drop or browse)
   useEffect(() => {
@@ -70,6 +71,7 @@ export function AddJobPanel({ initialData, defaultOutputPath, defaultOutputEnabl
       frameEnd,
       frameStep,
       threads,
+      outputFormat: outputFormat || undefined,
       samples: samples !== '' ? samples : undefined,
       resolutionX: resX !== '' ? resX : undefined,
       resolutionY: resY !== '' ? resY : undefined,
@@ -186,6 +188,20 @@ export function AddJobPanel({ initialData, defaultOutputPath, defaultOutputEnabl
           </div>
 
           <div className={styles.section}>Overrides (optional)</div>
+          <div className={styles.twoCol}>
+            <div className={styles.field}>
+              <label>Output Format</label>
+              <select value={outputFormat} onChange={(e) => setOutputFormat(e.target.value as OutputFormat | '')}>
+                <option value="">From .blend file</option>
+                <option value="PNG">PNG</option>
+                <option value="JPEG">JPEG</option>
+                <option value="OPEN_EXR">OpenEXR</option>
+                <option value="OPEN_EXR_MULTILAYER">OpenEXR Multilayer</option>
+                <option value="TIFF">TIFF</option>
+                <option value="WEBP">WebP</option>
+              </select>
+            </div>
+          </div>
           <div className={styles.threeCol}>
             <div className={styles.field}>
               <label>Samples</label>

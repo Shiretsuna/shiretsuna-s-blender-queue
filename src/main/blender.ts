@@ -1,35 +1,31 @@
 import { spawn, ChildProcess } from 'child_process'
 import { RenderJob } from './types'
 
-// "Fra:10 Mem:..." — fires at the start of each frame render
 const FRAME_RE = /^Fra:(\d+)\s/m
-// "Saved: '/path/to/frame_0001.png'" — fires when a frame file is written
 const SAVED_RE = /Saved:\s*'(.+?)'\s/
 
-// savedPath is set only on the Saved: line, undefined on Fra: lines
 export type ProgressCallback = (frame: number, line: string, savedPath?: string) => void
 export type DoneCallback = (exitCode: number | null, error?: string) => void
 
 export function spawnBlender(
   blenderPath: string,
   job: RenderJob,
+  startFrame: number,
   onProgress: ProgressCallback,
   onDone: DoneCallback
 ): ChildProcess {
-  const args = buildArgs(job)
+  const args = buildArgs(job, startFrame)
   const proc = spawn(blenderPath, args, { stdio: ['ignore', 'pipe', 'pipe'] })
 
   const handleLine = (line: string): void => {
     const frameMatch = FRAME_RE.exec(line)
     if (frameMatch) {
-      // Frame started — report progress tick (no savedPath)
       onProgress(parseInt(frameMatch[1], 10), line, undefined)
       return
     }
     const savedMatch = SAVED_RE.exec(line)
     if (savedMatch) {
-      // Frame file written — report saved path (no progress tick)
-      onProgress(job.currentFrame ?? job.frameStart, line, savedMatch[1])
+      onProgress(job.currentFrame ?? startFrame, line, savedMatch[1])
     }
   }
 
@@ -51,7 +47,6 @@ export function spawnBlender(
   })
 
   proc.on('error', (err) => onDone(null, err.message))
-
   proc.on('close', (code) => {
     onDone(code, code !== 0 ? lastError || `Blender exited with code ${code}` : undefined)
   })
@@ -59,11 +54,11 @@ export function spawnBlender(
   return proc
 }
 
-function buildArgs(job: RenderJob): string[] {
+function buildArgs(job: RenderJob, startFrame: number): string[] {
   const args: string[] = [
     '-b', job.blendFile,
     '--engine', job.engine,
-    '-s', String(job.frameStart),
+    '-s', String(startFrame),
     '-e', String(job.frameEnd),
     '-j', String(job.frameStep),
     '-t', String(job.threads)
@@ -72,24 +67,61 @@ function buildArgs(job: RenderJob): string[] {
   if (job.outputPath)
     args.push('-o', job.outputPath)
 
+  // Python expression overrides — run before rendering
+  const pyExprs: string[] = []
+
+  if (job.outputFormat)
+    pyExprs.push(`bpy.context.scene.render.image_settings.file_format = '${job.outputFormat}'`)
   if (job.resolutionX != null)
-    args.push('--python-expr', `import bpy; bpy.context.scene.render.resolution_x = ${job.resolutionX}`)
+    pyExprs.push(`bpy.context.scene.render.resolution_x = ${job.resolutionX}`)
   if (job.resolutionY != null)
-    args.push('--python-expr', `import bpy; bpy.context.scene.render.resolution_y = ${job.resolutionY}`)
+    pyExprs.push(`bpy.context.scene.render.resolution_y = ${job.resolutionY}`)
   if (job.resolutionScale != null)
-    args.push('--python-expr', `import bpy; bpy.context.scene.render.resolution_percentage = ${job.resolutionScale}`)
+    pyExprs.push(`bpy.context.scene.render.resolution_percentage = ${job.resolutionScale}`)
   if (job.samples != null)
-    args.push('--python-expr',
-      `import bpy; s = bpy.context.scene; hasattr(s.cycles, 'samples') and setattr(s.cycles, 'samples', ${job.samples}) or setattr(s.eevee, 'taa_render_samples', ${job.samples})`)
+    pyExprs.push(`(lambda s: hasattr(s.cycles,'samples') and setattr(s.cycles,'samples',${job.samples}) or setattr(s.eevee,'taa_render_samples',${job.samples}))(bpy.context.scene)`)
+
+  if (pyExprs.length > 0)
+    args.push('--python-expr', `import bpy\n${pyExprs.join('\n')}`)
 
   args.push('-x', '1', '-a')
   return args
+}
+
+export function getBlenderVersion(blenderPath: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    let resolved = false
+    const done = (v: string | null): void => {
+      if (resolved) return
+      resolved = true
+      resolve(v)
+    }
+
+    let proc: ChildProcess
+    try {
+      proc = spawn(blenderPath, ['--version'], { stdio: ['ignore', 'pipe', 'pipe'] })
+    } catch {
+      return done(null)
+    }
+
+    let out = ''
+    proc.stdout?.on('data', (chunk: Buffer) => { out += chunk.toString() })
+    proc.on('close', () => {
+      const match = /Blender\s+(\d+\.\d+\.?\d*)/i.exec(out)
+      done(match ? match[1] : null)
+    })
+    proc.on('error', () => done(null))
+
+    // Safety timeout
+    setTimeout(() => { try { proc.kill() } catch { /* ignore */ } done(null) }, 6000)
+  })
 }
 
 export function getDefaultBlenderPaths(): string[] {
   const platform = process.platform
   if (platform === 'win32') {
     return [
+      'C:\\Program Files\\Blender Foundation\\Blender 4.3\\blender.exe',
       'C:\\Program Files\\Blender Foundation\\Blender 4.2\\blender.exe',
       'C:\\Program Files\\Blender Foundation\\Blender 4.1\\blender.exe',
       'C:\\Program Files\\Blender Foundation\\Blender 4.0\\blender.exe',

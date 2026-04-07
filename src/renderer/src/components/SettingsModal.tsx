@@ -13,6 +13,7 @@ export function SettingsModal({ state, onSetBlenderPath, onClose }: Props): JSX.
   const [blenderPath, setBlenderPath] = useState(state.blenderPath)
   const [defaultOutputPath, setDefaultOutputPath] = useState(state.defaultOutputPath)
   const [defaultOutputEnabled, setDefaultOutputEnabled] = useState(state.defaultOutputEnabled)
+  const [concurrentJobs, setConcurrentJobs] = useState(state.concurrentJobs)
 
   const pickExe = async (): Promise<void> => {
     const path = await window.api.openBlenderExeDialog()
@@ -33,6 +34,7 @@ export function SettingsModal({ state, onSetBlenderPath, onClose }: Props): JSX.
   const handleSave = async (): Promise<void> => {
     await onSetBlenderPath(blenderPath.trim())
     await window.api.setDefaultOutput(defaultOutputPath.trim(), defaultOutputEnabled)
+    await window.api.setConcurrentJobs(concurrentJobs)
     onClose()
   }
 
@@ -46,34 +48,50 @@ export function SettingsModal({ state, onSetBlenderPath, onClose }: Props): JSX.
 
         <div className={styles.body}>
           {/* Blender path */}
+          <div className={styles.section}>Blender</div>
           <div className={styles.field}>
-            <label>Blender Executable Path</label>
+            <label>Executable Path</label>
             <div className={styles.row}>
-              <input
-                value={blenderPath}
-                onChange={(e) => setBlenderPath(e.target.value)}
-                placeholder="blender"
-              />
+              <input value={blenderPath} onChange={(e) => setBlenderPath(e.target.value)} placeholder="blender" />
               <button className={styles.btnPick} onClick={pickExe}>Browse</button>
             </div>
+            {state.blenderVersion && (
+              <span className={styles.hint}>Detected: Blender {state.blenderVersion}</span>
+            )}
+            {!state.blenderVersion && (
+              <span className={styles.hint}>You can also type &ldquo;blender&rdquo; if it&apos;s on your PATH.</span>
+            )}
+          </div>
+          <button className={styles.btnSecondary} onClick={detectAuto}>Auto-detect Blender</button>
+
+          {/* Concurrent renders */}
+          <div className={styles.section}>Queue</div>
+          <div className={styles.field}>
+            <label>Concurrent Renders</label>
+            <div className={settingsStyles.concurrentRow}>
+              <input
+                type="range"
+                min={1} max={8} step={1}
+                value={concurrentJobs}
+                onChange={(e) => setConcurrentJobs(parseInt(e.target.value))}
+                className={settingsStyles.slider}
+              />
+              <span className={settingsStyles.concurrentValue}>{concurrentJobs}</span>
+            </div>
             <span className={styles.hint}>
-              You can also type &ldquo;blender&rdquo; if it&apos;s on your PATH.
+              {concurrentJobs === 1
+                ? 'One at a time (default). Safe for most setups.'
+                : `${concurrentJobs} jobs run in parallel. Requires enough VRAM / CPU threads.`}
             </span>
           </div>
 
-          <button className={styles.btnSecondary} onClick={detectAuto} style={{ marginTop: 4 }}>
-            Auto-detect Blender
-          </button>
-
-          <hr style={{ margin: '16px 0', border: 'none', borderTop: '1px solid var(--border)' }} />
-
           {/* Default output path */}
+          <div className={styles.section}>Output</div>
           <div className={settingsStyles.toggleRow}>
             <span className={settingsStyles.toggleLabel}>Default Output Folder</span>
             <button
               className={`${settingsStyles.toggle} ${defaultOutputEnabled ? settingsStyles.toggleOn : ''}`}
               onClick={() => setDefaultOutputEnabled(!defaultOutputEnabled)}
-              title={defaultOutputEnabled ? 'Disable' : 'Enable'}
             >
               <span className={settingsStyles.toggleThumb} />
             </button>
@@ -91,7 +109,7 @@ export function SettingsModal({ state, onSetBlenderPath, onClose }: Props): JSX.
                 <button className={styles.btnPick} onClick={pickOutputFolder}>Browse</button>
               </div>
               <span className={styles.hint}>
-                Each blend file renders into <em>{defaultOutputPath || '/renders'}/{'<blend name>'}/frame_####</em>
+                Each file renders to <em>{defaultOutputPath || '/renders'}/{'<blend name>'}/frame_####</em>
               </span>
             </div>
           )}

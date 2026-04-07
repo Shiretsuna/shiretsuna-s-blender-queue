@@ -21,6 +21,9 @@ export function Toolbar({ state, onStart, onPause, onAddJob, onSettings }: Props
       <div className={styles.brand}>
         <span className={styles.logo}>&#9650;</span>
         <span className={styles.title}>Shiretsuna&apos;s Blender Queue</span>
+        {state.blenderVersion && (
+          <span className={styles.version}>Blender {state.blenderVersion}</span>
+        )}
       </div>
 
       <div className={styles.stats}>

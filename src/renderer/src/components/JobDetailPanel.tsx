@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { RenderJob, JobStatus } from '../../../main/types'
+import { RenderJob, JobStatus, OutputFormat } from '../../../main/types'
 import styles from './JobDetailPanel.module.css'
 
 interface Props {
@@ -50,6 +50,7 @@ function JobDetail({ job, onClose }: { job: RenderJob; onClose: () => void }): J
   const [editEnd, setEditEnd] = useState(String(job.frameEnd))
   const [editStep, setEditStep] = useState(String(job.frameStep))
   const [editOutput, setEditOutput] = useState(job.outputPath ?? '')
+  const [editFormat, setEditFormat] = useState<OutputFormat | ''>(job.outputFormat ?? '')
   const canEdit = job.status !== 'running'
 
   // Sync edit fields when a different job is selected
@@ -58,6 +59,7 @@ function JobDetail({ job, onClose }: { job: RenderJob; onClose: () => void }): J
     setEditEnd(String(job.frameEnd))
     setEditStep(String(job.frameStep))
     setEditOutput(job.outputPath ?? '')
+    setEditFormat(job.outputFormat ?? '')
   }, [job.id])
 
   // Load frame preview thumbnail whenever lastFramePath changes
@@ -139,7 +141,12 @@ function JobDetail({ job, onClose }: { job: RenderJob; onClose: () => void }): J
           <div className={styles.progressSection}>
             <div className={styles.progressRow}>
               <span>Frame {job.currentFrame ?? '—'}</span>
-              <span>{job.progress}%</span>
+              <span>
+                {job.progress}%
+                {job.etaMs != null && job.etaMs > 0 && (
+                  <span className={styles.eta}> · ~{formatDuration(job.etaMs)} left</span>
+                )}
+              </span>
             </div>
             <div className={styles.progressTrack}>
               <div className={styles.progressFill} style={{ width: `${job.progress}%` }} />
@@ -205,6 +212,28 @@ function JobDetail({ job, onClose }: { job: RenderJob; onClose: () => void }): J
           {job.durationMs != null && <Param label="Duration" value={formatDuration(job.durationMs)} />}
         </div>
 
+        <div className={styles.formatRow}>
+          <label style={{ marginBottom: 0, alignSelf: 'center' }}>Format</label>
+          <select
+            value={editFormat}
+            disabled={!canEdit}
+            onChange={(e) => {
+              const v = e.target.value as OutputFormat | ''
+              setEditFormat(v)
+              window.api.updateJobParams(job.id, { outputFormat: v || undefined })
+            }}
+            style={{ flex: 1 }}
+          >
+            <option value="">From .blend file</option>
+            <option value="PNG">PNG</option>
+            <option value="JPEG">JPEG</option>
+            <option value="OPEN_EXR">OpenEXR</option>
+            <option value="OPEN_EXR_MULTILAYER">OpenEXR Multilayer</option>
+            <option value="TIFF">TIFF</option>
+            <option value="WEBP">WebP</option>
+          </select>
+        </div>
+
         {/* Paths */}
         <div className={styles.sectionLabel}>Paths</div>
         <div className={styles.params}>
@@ -234,7 +263,14 @@ function JobDetail({ job, onClose }: { job: RenderJob; onClose: () => void }): J
         </button>
 
         {/* Log */}
-        <div className={styles.sectionLabel}>Log</div>
+        <div className={styles.logHeader}>
+          <span className={styles.sectionLabel} style={{ border: 'none', marginTop: 0 }}>Log</span>
+          {job.log.length > 0 && (
+            <button className={styles.exportBtn} onClick={() => window.api.exportLog(job.id)} title="Export log to file">
+              Export ↓
+            </button>
+          )}
+        </div>
         <div className={styles.log} ref={logRef}>
           {job.log.length === 0
             ? <span className={styles.logEmpty}>No output yet.</span>
